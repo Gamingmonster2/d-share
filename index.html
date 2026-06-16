@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Smart Bee - JPG to PDF Converter</title>
+    
+    <!-- Google Fonts: Inter for English, Cairo for Arabic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Cairo', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#FFFDF0',
+                            100: '#FFFBE2',
+                            200: '#FFF7C2',
+                            300: '#FFF094',
+                            400: '#FFE15A',
+                            500: '#F5C518', // The Smart Bee Signature Amber Gold
+                            600: '#D4A30C',
+                            700: '#A37706',
+                            800: '#735104',
+                            900: '#4A3302',
+                            950: '#271A00',
+                        },
+                        darkBg: '#0B0F19',
+                        darkCard: '#151D30',
+                        darkBorder: '#222F4C',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Alpine.js for robust state management -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <!-- pdf-lib for client-side PDF compilation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+
+    <style>
+        [x-cloak] { display: none !important; }
+        body {
+            font-family: 'Cairo', 'Inter', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        /* Custom scrollbar for premium look */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #222F4C;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #E5E7EB;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body x-data="pdfConverter()" :class="{ 'dark': darkMode, 'bg-darkBg text-neutral-100': darkMode, 'bg-slate-50 text-neutral-800': !darkMode }" class="min-h-full flex flex-col antialiased">
+
+    <!-- Global Navigation Header -->
+    <header class="border-b transition-colors duration-300" :class="darkMode ? 'border-darkBorder bg-darkBg/85 backdrop-blur-md' : 'border-neutral-200 bg-white/85 backdrop-blur-md'" class="sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                
+                <!-- Logo & Identity -->
+                <div class="flex items-center space-x-3 space-x-reverse">
+                    <div class="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center shadow-lg shadow-brand-500/20 hover:scale-105 transition-transform duration-200">
+                        <!-- Smart Bee Minimal SVG Icon -->
+                        <svg class="w-6 h-6 text-neutral-950" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <span class="font-bold text-lg tracking-tight block leading-none" :class="darkMode ? 'text-white' : 'text-neutral-900'">
+                            The Smart Bee
+                        </span>
+                        <span class="text-xs font-semibold text-brand-500 tracking-widest uppercase block mt-1">
+                            d.share.com.ly
+                        </span>
+                    </div>
+                </div>
+
+                <!-- External Sister Tools Links -->
+                <nav class="hidden md:flex items-center space-x-1 space-x-reverse text-sm font-medium">
+                    <a href="https://share.com.ly" target="_blank" rel="noopener noreferrer" class="px-4 py-2 rounded-lg transition-all duration-200 hover:bg-neutral-100 dark:hover:bg-neutral-800" :class="darkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-600 hover:text-neutral-900'" x-text="t('hub')"></a>
+                    <span class="text-neutral-300 dark:text-neutral-700">|</span>
+                    <a href="https://a.share.com.ly" target="_blank" rel="noopener noreferrer" class="px-4 py-2 rounded-lg transition-all duration-200 hover:bg-neutral-100 dark:hover:bg-neutral-800" :class="darkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-600 hover:text-neutral-900'" x-text="t('tool_a')"></a>
+                    <a href="https://b.share.com.ly" target="_blank" rel="noopener noreferrer" class="px-4 py-2 rounded-lg transition-all duration-200 hover:bg-neutral-100 dark:hover:bg-neutral-800" :class="darkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-600 hover:text-neutral-900'" x-text="t('tool_b')"></a>
+                    <a href="https://c.share.com.ly" target="_blank" rel="noopener noreferrer" class="px-4 py-2 rounded-lg transition-all duration-200 hover:bg-neutral-100 dark:hover:bg-neutral-800" :class="darkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-600 hover:text-neutral-900'" x-text="t('tool_c')"></a>
+                </nav>
+
+                <!-- System Controls (Dark Mode, Language, Mobile Menu) -->
+                <div class="flex items-center space-x-3 space-x-reverse">
+                    
+                    <!-- Language Toggle -->
+                    <button @click="toggleLang()" class="p-2.5 rounded-xl border transition-all duration-200" :class="darkMode ? 'border-darkBorder hover:bg-neutral-800 text-neutral-300' : 'border-neutral-200 hover:bg-neutral-100 text-neutral-700'">
+                        <span class="text-xs font-bold tracking-wider" x-text="lang === 'ar' ? 'EN' : 'عربي'"></span>
+                    </button>
+
+                    <!-- Dark Mode Toggle -->
+                    <button @click="darkMode = !darkMode" class="p-2.5 rounded-xl border transition-all duration-200" :class="darkMode ? 'border-darkBorder hover:bg-neutral-800 text-brand-500' : 'border-neutral-200 hover:bg-neutral-100 text-neutral-600'">
+                        <!-- Sun Icon -->
+                        <svg x-show="darkMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707.707M12 8a4 4 0 100 8 4 4 0 000-8z"/></svg>
+                        <!-- Moon Icon -->
+                        <svg x-show="!darkMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                    </button>
+
+                    <!-- Mobile Menu Button -->
+                    <button @click="mobileMenuOpen = !mobileMenuOpen" class="md:hidden p-2.5 rounded-xl border" :class="darkMode ? 'border-darkBorder text-neutral-300' : 'border-neutral-200 text-neutral-700'">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Mobile Navigation Menu -->
+        <div x-show="mobileMenuOpen" x-transition x-cloak class="md:hidden border-t" :class="darkMode ? 'border-darkBorder bg-darkBg' : 'border-neutral-200 bg-white'">
+            <div class="px-4 pt-2 pb-4 space-y-1">
+                <a href="https://share.com.ly" target="_blank" class="block px-3 py-2 rounded-md text-base font-medium" :class="darkMode ? 'text-neutral-300 hover:bg-neutral-800' : 'text-neutral-700 hover:bg-neutral-100'" x-text="t('hub')"></a>
+                <a href="https://a.share.com.ly" target="_blank" class="block px-3 py-2 rounded-md text-base font-medium" :class="darkMode ? 'text-neutral-300 hover:bg-neutral-800' : 'text-neutral-700 hover:bg-neutral-100'" x-text="t('tool_a')"></a>
+                <a href="https://b.share.com.ly" target="_blank" class="block px-3 py-2 rounded-md text-base font-medium" :class="darkMode ? 'text-neutral-300 hover:bg-neutral-800' : 'text-neutral-700 hover:bg-neutral-100'" x-text="t('tool_b')"></a>
+                <a href="https://c.share.com.ly" target="_blank" class="block px-3 py-2 rounded-md text-base font-medium" :class="darkMode ? 'text-neutral-300 hover:bg-neutral-800' : 'text-neutral-700 hover:bg-neutral-100'" x-text="t('tool_c')"></a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col justify-center" :dir="lang === 'ar' ? 'rtl' : 'ltr'">
+        
+        <!-- Hero Section -->
+        <div class="text-center max-w-3xl mx-auto mb-12">
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold tracking-wide uppercase mb-4" :class="darkMode ? 'bg-brand-500/10 text-brand-400' : 'bg-brand-100 text-brand-800'">
+                ⚡️ 100% Client-Side Sandbox Security
+            </span>
+            <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight mb-4" :class="darkMode ? 'text-white' : 'text-neutral-900'" x-text="t('title')"></h1>
+            <p class="text-lg leading-relaxed" :class="darkMode ? 'text-neutral-400' : 'text-neutral-600'" x-text="t('subtitle')"></p>
+        </div>
+
+        <!-- Application Interface Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            <!-- Left Panel: Uploader & Previews (8 Columns) -->
+            <div class="lg:col-span-8 space-y-6">
+                
+                <!-- Drag and Drop Area -->
+                <div 
+                    @dragover.prevent="dragOver = true" 
+                    @dragleave.prevent="dragOver = false" 
+                    @drop.prevent="dragOver = false; handleDrop($event)"
+                    class="relative border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center transition-all duration-300 cursor-pointer"
+                    :class="{ 
+                        'border-brand-500 bg-brand-500/5': dragOver, 
+                        'border-darkBorder hover:border-brand-500/60 bg-darkCard/40': darkMode && !dragOver,
+                        'border-neutral-300 hover:border-brand-500/60 bg-white': !darkMode && !dragOver
+                    }"
+                    @click="$refs.fileInput.click()">
+                    
+                    <input type="file" x-ref="fileInput" class="hidden" multiple accept="image/jpeg, image/png" @change="handleFileSelect($event)">
+                    
+                    <div class="space-y-4">
+                        <div class="w-16 h-16 mx-auto rounded-full bg-brand-500/10 flex items-center justify-center text-brand-500">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
+                        <div class="space-y-1">
+                            <p class="text-lg font-semibold" x-text="t('dropzone_title')"></p>
+                            <p class="text-xs" :class="darkMode ? 'text-neutral-500' : 'text-neutral-400'" x-text="t('dropzone_sub')"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preview list / Image Cards -->
+                <div x-show="files.length > 0" x-cloak class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-lg font-bold" x-text="t('preview_title')"></h2>
+                        <button @click="clearAll()" class="text-sm font-medium text-red-500 hover:text-red-600 transition-colors" x-text="t('clear_all')"></button>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <template x-for="(item, index) in files" :key="item.id">
+                            <div class="flex items-center p-3 rounded-xl border transition-all duration-200" :class="darkMode ? 'bg-darkCard/80 border-darkBorder' : 'bg-white border-neutral-200'">
+                                <img :src="item.previewUrl" class="w-16 h-16 object-cover rounded-lg mr-3 ml-3" alt="preview">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium truncate" x-text="item.file.name"></p>
+                                    <p class="text-xs text-neutral-400" x-text="formatBytes(item.file.size)"></p>
+                                </div>
+                                <div class="flex items-center space-x-1 space-x-reverse">
+                                    <!-- Move Up -->
+                                    <button @click.stop="moveUp(index)" class="p-1.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 dark:hover:text-white" :disabled="index === 0">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                                    </button>
+                                    <!-- Move Down -->
+                                    <button @click.stop="moveDown(index)" class="p-1.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 dark:hover:text-white" :disabled="index === files.length - 1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </button>
+                                    <!-- Remove -->
+                                    <button @click.stop="removeFile(index)" class="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-950/30 text-red-500">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Panel: Conversion Settings (4 Columns) -->
+            <div class="lg:col-span-4">
+                <div class="rounded-2xl border p-6 space-y-6" :class="darkMode ? 'bg-darkCard border-darkBorder' : 'bg-white border-neutral-200'">
+                    
+                    <h2 class="text-xl font-bold border-b pb-4" :class="darkMode ? 'border-darkBorder' : 'border-neutral-100'" x-text="t('settings_title')"></h2>
+
+                    <!-- Output Filename Input -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2" x-text="t('filename_label')"></label>
+                        <input type="text" x-model="pdfName" class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-brand-500 outline-none transition-all duration-200" :class="darkMode ? 'bg-neutral-900 border-darkBorder text-white' : 'bg-slate-50 border-neutral-200 text-neutral-900'" :placeholder="t('filename_placeholder')">
+                    </div>
+
+                    <!-- Page Size Selection -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2" x-text="t('page_size_label')"></label>
+                        <select x-model="pageSize" class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-brand-500 outline-none transition-all duration-200" :class="darkMode ? 'bg-neutral-900 border-darkBorder text-white' : 'bg-slate-50 border-neutral-200 text-neutral-900'">
+                            <option value="fit" x-text="t('page_size_fit')"></option>
+                            <option value="a4">A4 (595 x 842 pt)</option>
+                            <option value="letter">Letter (612 x 792 pt)</option>
+                        </select>
+                    </div>
+
+                    <!-- Orientation (Only if Page Size is not 'fit') -->
+                    <div x-show="pageSize !== 'fit'" x-transition x-cloak>
+                        <label class="block text-sm font-semibold mb-2" x-text="t('orientation_label')"></label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button @click="orientation = 'portrait'" class="py-2.5 px-4 rounded-xl border font-medium text-sm transition-all duration-200" :class="orientation === 'portrait' ? 'border-brand-500 bg-brand-500/10 text-brand-500' : (darkMode ? 'border-darkBorder bg-neutral-900 text-neutral-400' : 'border-neutral-200 bg-slate-50 text-neutral-600')">
+                                <span x-text="t('orientation_portrait')"></span>
+                            </button>
+                            <button @click="orientation = 'landscape'" class="py-2.5 px-4 rounded-xl border font-medium text-sm transition-all duration-200" :class="orientation === 'landscape' ? 'border-brand-500 bg-brand-500/10 text-brand-500' : (darkMode ? 'border-darkBorder bg-neutral-900 text-neutral-400' : 'border-neutral-200 bg-slate-50 text-neutral-600')">
+                                <span x-text="t('orientation_landscape')"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Margins -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2" x-text="t('margin_label')"></label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button @click="margin = 'none'" class="py-2 px-3 rounded-lg border font-medium text-xs transition-all duration-200" :class="margin === 'none' ? 'border-brand-500 bg-brand-500/10 text-brand-500' : (darkMode ? 'border-darkBorder bg-neutral-900 text-neutral-400' : 'border-neutral-200 bg-slate-50 text-neutral-600')">
+                                <span x-text="t('margin_none')"></span>
+                            </button>
+                            <button @click="margin = 'small'" class="py-2 px-3 rounded-lg border font-medium text-xs transition-all duration-200" :class="margin === 'small' ? 'border-brand-500 bg-brand-500/10 text-brand-500' : (darkMode ? 'border-darkBorder bg-neutral-900 text-neutral-400' : 'border-neutral-200 bg-slate-50 text-neutral-600')">
+                                <span x-text="t('margin_small')"></span>
+                            </button>
+                            <button @click="margin = 'medium'" class="py-2 px-3 rounded-lg border font-medium text-xs transition-all duration-200" :class="margin === 'medium' ? 'border-brand-500 bg-brand-500/10 text-brand-500' : (darkMode ? 'border-darkBorder bg-neutral-900 text-neutral-400' : 'border-neutral-200 bg-slate-50 text-neutral-600')">
+                                <span x-text="t('margin_medium')"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- CTA Action Button -->
+                    <button 
+                        @click="convertToPdf()" 
+                        :disabled="files.length === 0 || isConverting"
+                        class="w-full py-4 px-6 rounded-xl font-bold tracking-wide transition-all duration-300 flex items-center justify-center space-x-2 space-x-reverse shadow-lg"
+                        :class="{
+                            'bg-brand-500 hover:bg-brand-600 text-neutral-950 shadow-brand-500/20 active:scale-98 cursor-pointer': files.length > 0 && !isConverting,
+                            'bg-neutral-300 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-600 cursor-not-allowed shadow-none': files.length === 0 || isConverting
+                        }">
+                        <!-- Loader Spinner -->
+                        <svg x-show="isConverting" class="animate-spin h-5 w-5 text-neutral-950" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span x-text="isConverting ? t('converting_btn') : t('convert_btn')"></span>
+                    </button>
+
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Global Toast Notification Banner -->
+    <div x-show="toast.show" x-transition x-cloak class="fixed bottom-6 left-6 right-6 sm:left-auto sm:right-6 sm:w-96 z-50 p-4 rounded-xl shadow-2xl flex items-center space-x-3 space-x-reverse border" :class="toast.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-400'">
+        <div class="flex-shrink-0">
+            <template x-if="toast.type === 'success'">
+                <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </template>
+            <template x-if="toast.type === 'error'">
+                <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </template>
+        </div>
+        <div class="flex-1 text-sm font-medium" x-text="toast.message"></div>
+        <button @click="toast.show = false" class="text-neutral-400 hover:text-neutral-200">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-auto border-t py-8 text-center text-xs tracking-wide transition-colors duration-300" :class="darkMode ? 'border-darkBorder text-neutral-500 bg-darkBg' : 'border-neutral-200 text-neutral-400 bg-white'">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-2">
+            <p>&copy; <span x-text="new Date().getFullYear()"></span> The Smart Bee. All rights reserved.</p>
+            <p>d.share.com.ly — Private local client-side processing sandbox.</p>
+        </div>
+    </footer>
+
+    <!-- JS Logic Block -->
+    <script>
+        function pdfConverter() {
+            return {
+                darkMode: true,
+                lang: 'ar',
+                mobileMenuOpen: false,
+                dragOver: false,
+                files: [],
+                pdfName: 'smart-bee-document',
+                pageSize: 'fit',
+                orientation: 'portrait',
+                margin: 'none',
+                isConverting: false,
+                toast: {
+                    show: false,
+                    message: '',
+                    type: 'success'
+                },
+
+                // Translation Directory
+                translations: {
+                    en: {
+                        title: "JPG & PNG to PDF Converter",
+                        subtitle: "Convert your images to high-quality PDF documents locally and securely. No files are uploaded to any server.",
+                        dropzone_title: "Drag & drop your images here, or click to browse",
+                        dropzone_sub: "Supports JPG, JPEG, PNG up to 20MB",
+                        settings_title: "Document Settings",
+                        filename_label: "Output PDF Name",
+                        filename_placeholder: "my-document",
+                        page_size_label: "Page Size",
+                        page_size_fit: "Fit Image Size",
+                        orientation_label: "Orientation",
+                        orientation_portrait: "Portrait",
+                        orientation_landscape: "Landscape",
+                        margin_label: "Margins",
+                        margin_none: "None",
+                        margin_small: "Small (10pt)",
+                        margin_medium: "Medium (20pt)",
+                        convert_btn: "Convert to PDF",
+                        converting_btn: "Converting...",
+                        clear_all: "Clear All",
+                        preview_title: "Selected Images",
+                        hub: "Hub",
+                        tool_a: "PDF Compress",
+                        tool_b: "Image Resize",
+                        tool_c: "Format Convert",
+                        success_msg: "PDF generated successfully!",
+                        error_msg: "Error generating PDF. Please check files."
+                    },
+                    ar: {
+                        title: "تحويل الصور إلى PDF",
+                        subtitle: "قم بتحويل صورك إلى ملفات PDF عالية الجودة محلياً وبأمان تام. لا يتم رفع أي ملفات إلى أي خادم.",
+                        dropzone_title: "اسحب وأسقط صورك هنا، أو انقر للتصفح",
+                        dropzone_sub: "يدعم صيغ JPG, JPEG, PNG حتى 20 ميجابايت",
+                        settings_title: "إعدادات المستند",
+                        filename_label: "اسم ملف PDF الناتج",
+                        filename_placeholder: "مستندي",
+                        page_size_label: "حجم الصفحة",
+                        page_size_fit: "مطابقة حجم الصورة",
+                        orientation_label: "الاتجاه",
+                        orientation_portrait: "عمودي",
+                        orientation_landscape: "أفقي",
+                        margin_label: "الهوامش",
+                        margin_none: "بدون",
+                        margin_small: "صغيرة (10 نقاط)",
+                        margin_medium: "متوسطة (20 نقطة)",
+                        convert_btn: "تحويل إلى PDF",
+                        converting_btn: "جاري التحويل...",
+                        clear_all: "مسح الكل",
+                        preview_title: "الصور المحددة",
+                        hub: "الرئيسية",
+                        tool_a: "ضغط PDF",
+                        tool_b: "تغيير الحجم",
+                        tool_c: "تحويل الصيغ",
+                        success_msg: "تم إنشاء ملف PDF بنجاح!",
+                        error_msg: "حدث خطأ أثناء إنشاء PDF. يرجى التحقق من الملفات."
+                    }
+                },
+
+                t(key) {
+                    return this.translations[this.lang][key] || key;
+                },
+
+                toggleLang() {
+                    this.lang = this.lang === 'ar' ? 'en' : 'ar';
+                    document.documentElement.dir = this.lang === 'ar' ? 'rtl' : 'ltr';
+                    document.documentElement.lang = this.lang;
+                },
+
+                showToast(message, type = 'success') {
+                    this.toast.message = message;
+                    this.toast.type = type;
+                    this.toast.show = true;
+                    setTimeout(() => {
+                        this.toast.show = false;
+                    }, 4000);
+                },
+
+                handleFileSelect(e) {
+                    const selectedFiles = Array.from(e.target.files);
+                    this.addFiles(selectedFiles);
+                },
+
+                handleDrop(e) {
+                    if (e.dataTransfer.files) {
+                        this.addFiles(Array.from(e.dataTransfer.files));
+                    }
+                },
+
+                addFiles(fileList) {
+                    fileList.forEach(file => {
+                        if (file.type === 'image/jpeg' || file.type === 'image/png') {
+                            const previewUrl = URL.createObjectURL(file);
+                            this.files.push({
+                                id: Date.now() + Math.random().toString(36).substr(2, 9),
+                                file: file,
+                                previewUrl: previewUrl
+                            });
+                        } else {
+                            this.showToast(this.lang === 'ar' ? 'يرجى اختيار صور بصيغة JPG أو PNG فقط.' : 'Please select JPG or PNG images only.', 'error');
+                        }
+                    });
+                },
+
+                removeFile(index) {
+                    URL.revokeObjectURL(this.files[index].previewUrl);
+                    this.files.splice(index, 1);
+                },
+
+                moveUp(index) {
+                    if (index > 0) {
+                        const temp = this.files[index];
+                        this.files[index] = this.files[index - 1];
+                        this.files[index - 1] = temp;
+                    }
+                },
+
+                moveDown(index) {
+                    if (index < this.files.length - 1) {
+                        const temp = this.files[index];
+                        this.files[index] = this.files[index + 1];
+                        this.files[index + 1] = temp;
+                    }
+                },
+
+                clearAll() {
+                    this.files.forEach(item => URL.revokeObjectURL(item.previewUrl));
+                    this.files = [];
+                },
+
+                formatBytes(bytes, decimals = 2) {
+                    if (bytes === 0) return '0 Bytes';
+                    const k = 1024;
+                    const dm = decimals < 0 ? 0 : decimals;
+                    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+                },
+
+                async convertToPdf() {
+                    if (this.files.length === 0) return;
+                    this.isConverting = true;
+
+                    try {
+                        const { PDFDocument, PageSizes } = PDFLib;
+                        const pdfDoc = await PDFDocument.create();
+
+                        // Margin mapping
+                        let marginValue = 0;
+                        if (this.margin === 'small') marginValue = 10;
+                        if (this.margin === 'medium') marginValue = 20;
+
+                        for (let i = 0; i < this.files.length; i++) {
+                            const fileObj = this.files[i];
+                            const arrayBuffer = await fileObj.file.arrayBuffer();
+                            
+                            let embeddedImage;
+                            if (fileObj.file.type === 'image/png') {
+                                embeddedImage = await pdfDoc.embedPng(arrayBuffer);
+                            } else {
+                                embeddedImage = await pdfDoc.embedJpg(arrayBuffer);
+                            }
+
+                            const imgWidth = embeddedImage.width;
+                            const imgHeight = embeddedImage.height;
+
+                            let pageWidth, pageHeight;
+
+                            // Determine Page Dimensions
+                            if (this.pageSize === 'fit') {
+                                pageWidth = imgWidth + (marginValue * 2);
+                                pageHeight = imgHeight + (marginValue * 2);
+                            } else {
+                                const sizeArr = this.pageSize === 'a4' ? PageSizes.A4 : PageSizes.Letter;
+                                if (this.orientation === 'portrait') {
+                                    pageWidth = sizeArr[0];
+                                    pageHeight = sizeArr[1];
+                                } else {
+                                    pageWidth = sizeArr[1];
+                                    pageHeight = sizeArr[0];
+                                }
+                            }
+
+                            const page = pdfDoc.addPage([pageWidth, pageHeight]);
+
+                            // Calculate Scaled Dimensions inside margins
+                            const maxWidth = pageWidth - (marginValue * 2);
+                            const maxHeight = pageHeight - (marginValue * 2);
+
+                            const widthRatio = maxWidth / imgWidth;
+                            const heightRatio = maxHeight / imgHeight;
+                            const bestRatio = Math.min(widthRatio, heightRatio);
+
+                            const finalWidth = imgWidth * bestRatio;
+                            const finalHeight = imgHeight * bestRatio;
+
+                            // Center Image on Page
+                            const xOffset = marginValue + (maxWidth - finalWidth) / 2;
+                            const yOffset = marginValue + (maxHeight - finalHeight) / 2;
+
+                            page.drawImage(embeddedImage, {
+                                x: xOffset,
+                                y: yOffset,
+                                width: finalWidth,
+                                height: finalHeight
+                            });
+                        }
+
+                        const pdfBytes = await pdfDoc.save();
+                        
+                        // Trigger client download
+                        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = `${this.pdfName || 'smart-bee-document'}.pdf`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+
+                        this.showToast(this.t('success_msg'), 'success');
+                    } catch (error) {
+                        console.error(error);
+                        this.showToast(this.t('error_msg'), 'error');
+                    } finally {
+                        this.isConverting = false;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
